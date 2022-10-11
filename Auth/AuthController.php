@@ -101,7 +101,7 @@ class AuthController extends Controller
         if ($checkCode['status'] !== true) {
             return response()->json(['status' => 'success', 'message' => 'مشکلی پیش آمده',], 406);
         }
-        
+
         UsersOtp::where('token', $request->token)->delete();
 
         $data = ['name' => $request->name, 'family' => $request->family, 'phone' => $checkCode['res']['phone'], 'password' => Hash::make($request->password)];
@@ -160,7 +160,7 @@ class AuthController extends Controller
         if ($checkCodeIsTrue['status'] !== true) {
             return response()->json($checkCodeIsTrue['res'], 406);
         }
-        
+
         return response()->json($checkCodeIsTrue['res']);
     }
 
@@ -191,13 +191,13 @@ class AuthController extends Controller
         if ($checkCodeIsTrue['status'] !== true || strlen($request->password) < 6) {
             return response()->json(['status' => 'failed', 'message' => 'مشکلی پیش آمده !'], 406);
         }
-        
+
         User::where('phone', $checkCodeIsTrue['res']['phone'])
-            ->update(['password' => Hash::make($request->password));
+            ->update(['password' => Hash::make($request->password)]);
 
         UsersOtp::where('token', $request->token)->delete();
 
-        return response()->json(['status' => 'success', 'message' => 'پسورد تغییر یافت']);
+        return response()->json(['status' => 'success', 'message' => 'رمز عبور با موفقیت تغییر یافت.']);
     }
 
 }
