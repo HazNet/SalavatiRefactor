@@ -1,4 +1,5 @@
-###سناریو کد :
+### سناریو کد
+
 یک تیبل otp و یک تیبل user ساختیم .
 تیبل otp , حاوی فیلد های زیر هست
 
@@ -13,14 +14,13 @@
 برای فراموشی رمز عبور دقیقا فرایند صحت سنجی که در ثبت نام پیاده سازی شده , به کار گرفتم = متد checkCodeIsTrue
 
 _api.php_
-
 {
-Route::post('login', 'login');
-Route::post('sendCode', 'sendCode');
-Route::post('check_code', 'checkCode');
-Route::post('register_complete', 'registerComplete');
-Route::post('register', 'register');
-Route::post('logout', 'logout');
-Route::post('refresh', 'refresh');
-Route::post('resetPassword', 'resetPassword');
+- Route::post('login', 'login');
+- Route::post('sendCode', 'sendCode');
+- Route::post('check_code', 'checkCode');
+- Route::post('register_complete', 'registerComplete');
+- Route::post('register', 'register');
+- Route::post('logout', 'logout');
+- Route::post('refresh', 'refresh');
+- Route::post('resetPassword', 'resetPassword');
 }
