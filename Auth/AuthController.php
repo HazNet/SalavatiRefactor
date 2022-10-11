@@ -17,7 +17,6 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-
     public function __construct()
     {
         #$this->middleware('auth:api', ['except' => ['login', 'sendCode', 'register', 'checkCode', 'registerComplete', 'resetPassword']]);
@@ -26,9 +25,11 @@ class AuthController extends Controller
     public function checkBeforeAuth($request)
     {
         $user = User::where('phone', $request->phone)->get();
+
         if (empty($user[0])) {
             return false;
         }
+
         return true;
     }
 
@@ -43,23 +44,22 @@ class AuthController extends Controller
         if (empty($request->password)) {
             return response()->json(['status' => 'warning', 'message' => 'پسورد خود را وارد کنید']);
         }
+
         $request->validate(['password' => 'required|string',]);
         $credentials = $request->only('phone', 'password');
 
         $token = Auth::attempt($credentials);
         if (!$token) {
-//            TODO::block request
+            // TODO::block request
             return response()->json(['status' => 'error', 'message' => 'پسورد اشتباه است',], 401);
         }
 
         $user = Auth::user();
         return response()->json(['status' => 'logined', 'message' => 'با موفقیت وارد شدید.', 'user' => ['name' => $user->name, 'family' => $user->family, 'phone' => $user->phone, 'auth' => $user->auth, 'code_meli' => $user->code_meli], 'authorisation' => ['token' => $token, 'type' => 'bearer',]], 200);
-
     }
 
     public function sendCode(Request $request, $phone = false)
     {
-
         $phone = $request->phone ?? $phone;
         $validator = \Validator::make(['phone' => $phone], ['phone' => ['required', new Phone()]]);
         if ($validator->fails()) {
@@ -91,26 +91,29 @@ class AuthController extends Controller
         }
 
         return response()->json(['status' => 'success', 'message' => 'کد اعتبارسنجی به شماره تلفن شما ارسال شد.', 'token' => $token, 'timer' => $expire, 'phone' => $phone]);
-
-
     }
 
     public function registerComplete(Request $request)
     {
         $request->validate(['name' => ['required', 'min:2', 'max:32', new Persian()], 'family' => ['required', 'min:2', 'max:32', new Persian()], 'phone' => ['required', new Phone()], 'token' => ['required', 'min:32', 'max:32'], 'code' => ['required', 'digits:5', 'integer']]);
+
         $checkCode = self::checkCodeIsTrue($request, false);
-        if ($checkCode['status'] === true) {
-            UsersOtp::where('token', $request->token)->delete();
-            $data = ['name' => $request->name, 'family' => $request->family, 'phone' => $checkCode['res']['phone'], 'password' => Hash::make($request->password)];
-            if (isset($request->inviterId) and is_numeric($request->inviterId)) {
-                $data = array_merge($data, ['inviter_id' => $request->inviterId]);
-            }
-            $user = User::create($data);
-            $token = Auth::login($user);
-            return response()->json(['status' => 'success', 'message' => 'با موفقیت ثبت نام کردید', 'user' => ['name' => $user->name, 'family' => $user->family, 'phone' => $user->phone, 'auth' => 'level-1', 'code_meli' => $user->code_meli], 'authorisation' => ['token' => $token, 'type' => 'bearer',]]);
-        } else {
+        if ($checkCode['status'] !== true) {
             return response()->json(['status' => 'success', 'message' => 'مشکلی پیش آمده',], 406);
         }
+        
+        UsersOtp::where('token', $request->token)->delete();
+
+        $data = ['name' => $request->name, 'family' => $request->family, 'phone' => $checkCode['res']['phone'], 'password' => Hash::make($request->password)];
+
+        if (isset($request->inviterId) and is_numeric($request->inviterId)) {
+            $data = array_merge($data, ['inviter_id' => $request->inviterId]);
+        }
+
+        $user = User::create($data);
+        $token = Auth::login($user);
+
+        return response()->json(['status' => 'success', 'message' => 'با موفقیت ثبت نام کردید', 'user' => ['name' => $user->name, 'family' => $user->family, 'phone' => $user->phone, 'auth' => 'level-1', 'code_meli' => $user->code_meli], 'authorisation' => ['token' => $token, 'type' => 'bearer',]]);
     }
 
     public function logout()
@@ -127,7 +130,7 @@ class AuthController extends Controller
     function checkCodeIsTrue(Request $request, $expireCheck = true)
     {
         $request->validate(['token' => 'required|min:32|max:32', 'code' => 'required|digits:5|integer']);
-        $userOtp = UsersOtp::where('token', $request->token)->first();
+        $userOtp = UsersOtp::firstWhere('token', $request->token);
 
         if (empty($userOtp)) {
             return ['status' => false, 'res' => ['status' => 'failed', 'message' => 'زمان وارد کردن کد پایان یافته لطفا کد جدیدی دریافت کنید']];
@@ -154,29 +157,30 @@ class AuthController extends Controller
     function checkCode(Request $request)
     {
         $checkCodeIsTrue = self::checkCodeIsTrue($request);
-        if ($checkCodeIsTrue['status'] === true) {
-            return response()->json($checkCodeIsTrue['res']);
-        } else {
+        if ($checkCodeIsTrue['status'] !== true) {
             return response()->json($checkCodeIsTrue['res'], 406);
         }
-
+        
+        return response()->json($checkCodeIsTrue['res']);
     }
 
 
     function checkCodeIsSendable($phone)
     {
-        $userOtp = UsersOtp::where('phone', $phone)->first();
-        //not exists
+        $userOtp = UsersOtp::firstWhere('phone', $phone);
 
         if (!isset($userOtp)) {
             return ['create_new_otp'];
         }
+
         if ($userOtp->expire_at < time()) {
             return ['update_otp', $userOtp];
         }
+
         if ($userOtp->retry < time()) {
             return ['no_change_code', $userOtp];
         }
+
         return ['not_send'];
     }
 
@@ -184,15 +188,16 @@ class AuthController extends Controller
     function resetPassword(Request $request)
     {
         $checkCodeIsTrue = self::checkCodeIsTrue($request);
-        if ($checkCodeIsTrue['status'] === true and strlen($request->password) > 5) {
-            $user = User::where('phone', $checkCodeIsTrue['res']['phone'])->first();
-            $user->password = Hash::make($request->password);
-            $user->save();
-            UsersOtp::where('token', $request->token)->delete();
-
-            return response()->json(['status' => 'success', 'message' => 'پسورد تغییر یافت']);
+        if ($checkCodeIsTrue['status'] !== true || strlen($request->password) < 6) {
+            return response()->json(['status' => 'failed', 'message' => 'مشکلی پیش آمده !'], 406);
         }
-        return response()->json(['status' => 'failed', 'message' => 'مشکلی پیش آمده !'], 406);
+        
+        User::where('phone', $checkCodeIsTrue['res']['phone'])
+            ->update(['password' => Hash::make($request->password));
+
+        UsersOtp::where('token', $request->token)->delete();
+
+        return response()->json(['status' => 'success', 'message' => 'پسورد تغییر یافت']);
     }
 
 }
