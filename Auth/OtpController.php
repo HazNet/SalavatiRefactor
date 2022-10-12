@@ -7,33 +7,55 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
-class OtpController extends \App\Http\Controllers\Controller{
-
-    public static function  checkCodeIsTrue(Request $request, $expireCheck = true)
+class OtpController extends \App\Http\Controllers\Controller
+{
+    /**
+     * Check code is true.
+     *
+     * @param  Request $request
+     * @param  bool $expireCheck
+     * @return array
+     */
+    public static function checkCodeIsTrue(Request $request, bool $expireCheck = true)
         {
-            $request->validate(['token' => 'required|min:32|max:32', 'code' => 'required|digits:5|integer']);
+            $request->validate([
+                'token' => 'required|min:32|max:32',
+                'code' => 'required|digits:5|integer'
+            ]);
+
             $userOtp = UsersOtp::firstWhere('token', $request->token);
 
             if (empty($userOtp)) {
-                return ['status' => false, 'res' => ['status' => 'failed', 'message' => 'زمان وارد کردن کد پایان یافته لطفا کد جدیدی دریافت کنید']];
+                return [
+                    'status' => false,
+                    'res' => [
+                        'status' => 'failed',
+                        'message' => 'زمان وارد کردن کد پایان یافته لطفا کد جدیدی دریافت کنید'
+                    ]
+                ];
             }
-
-            if ($userOtp->code != $request->code) {
-                $userOtp->retry = ($userOtp->retry + 1);
+            if ($userOtp->code !== $request->code) {
+                ++$userOtp->retry;
                 $userOtp->save();
+
                 return ['status' => false, 'res' => ['status' => 'failed', 'message' => 'کد وارد شده اشتباه است']];
             }
-
-            if ($expireCheck == true and $userOtp->expire_at < time()) {
+            if ($expireCheck and $userOtp->expire_at < time()) {
                 return ['status' => false, 'res' => ['status' => 'failed', 'message' => 'زمان وارد کردن کد پایان یافته لطفا کد جدیدی دریافت کنید']];
             }
-
             if ($userOtp->retry > 5) {
                 return ['status' => false, 'res' => ['status' => 'failed', 'message' => 'تعداد تلاش های شما بیشتر از حد مجاز است', 'error' => 'TRY_FLOOD']];
             }
 
-
-            return ['status' => true, 'res' => ['status' => 'success', 'message' => 'کد صحیح بود', 'expire_auth_form' => Carbon::createFromTimeString($userOtp->updated_at)->addMinutes(25)->timestamp, 'phone' => $userOtp->phone]];
+            return [
+                'status' => true,
+                'res' => [
+                    'status' => 'success',
+                    'message' => 'کد صحیح بود',
+                    'expire_auth_form' => Carbon::createFromTimeString($userOtp->updated_at)->addMinutes(25)->timestamp,
+                    'phone' => $userOtp->phone
+                ]
+            ];
         }
 
     public static function checkCode(Request $request)
