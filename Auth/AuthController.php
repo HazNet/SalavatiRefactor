@@ -118,26 +118,50 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Logout user.
+     *
+     * @return mixed
+     */
     public function logout()
     {
         Auth::logout();
-        return response()->json(['status' => 'success', 'message' => 'Successfully logged out',]);
+        return response()->json(['status' => 'success', 'message' => 'Successfully logged out']);
     }
 
+    /**
+     * Refresh token.
+     *
+     * @return mixed
+     */
     public function refresh()
     {
-        return response()->json(['status' => 'success', 'user' => Auth::user(), 'authorisation' => ['token' => Auth::refresh(), 'type' => 'bearer',]]);
+        return response()->json([
+            'status' => 'success',
+            'user'   => Auth::user(),
+            'authorisation' => [
+                'token' => Auth::refresh(),
+                'type' => 'bearer'
+            ]
+        ]);
     }
 
-
-    function resetPassword(Request $request)
+    /**
+     * Reset password.
+     *
+     * @param  Request $request
+     * @return mixed
+     */
+    public function resetPassword(Request $request)
     {
         $checkCodeIsTrue = OtpController::checkCodeIsTrue($request);
-        if ($checkCodeIsTrue['status'] !== true || strlen($request->password) < 6) {
+
+        if ($checkCodeIsTrue['status'] !== true || strlen($request->password) > 6) { // TODO CHECK OPERATION
             return response()->json(['status' => 'failed', 'message' => 'مشکلی پیش آمده !'], 406);
         }
 
-        User::where('phone', $checkCodeIsTrue['res']['phone'])
+        User::query()
+            ->where('phone', $checkCodeIsTrue['res']['phone'])
             ->update(['password' => Hash::make($request->password)]);
 
         UsersOtp::where('token', $request->token)->delete();
@@ -146,3 +170,6 @@ class AuthController extends Controller
     }
 
 }
+/*
+ * Dry => Don't Repeat Yourself
+ */
