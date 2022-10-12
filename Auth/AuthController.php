@@ -66,23 +66,34 @@ class AuthController extends Controller
         ], 200);
     }
 
+    /**
+     * Complete register.
+     *
+     * @param  Request $request
+     * @return mixed
+     */
     public function registerComplete(Request $request)
     {
-        $request->validate(['name' =>
-            ['required', 'min:2', 'max:32', new Persian()],
+        $request->validate([ // TODO FORM REQUEST
+            'name' => ['required', 'min:2', 'max:32', new Persian()],
             'family' => ['required', 'min:2', 'max:32', new Persian()],
             'phone' => ['required', new Phone()],
             'token' => ['required', 'min:32', 'max:32'],
-            'code' => ['required', 'digits:5', 'integer']]);
+            'code' => ['required', 'digits:5', 'integer']
+        ]);
 
         $checkCode = OtpController::checkCodeIsTrue($request, false);
+
         if ($checkCode['status'] !== true) {
             return response()->json(['status' => 'success', 'message' => 'مشکلی پیش آمده',], 406);
         }
 
         UsersOtp::where('token', $request->token)->delete();
+
         $data = [
-            'name' => $request->name, 'family' => $request->family, 'phone' => $checkCode['res']['phone'],
+            'name' => $request->name,
+            'family' => $request->family,
+            'phone' => $checkCode['res']['phone'],
             'password' => Hash::make($request->password)
         ];
 
@@ -96,8 +107,15 @@ class AuthController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'با موفقیت ثبت نام کردید',
-            'user' => ['name' => $user->name, 'family' => $user->family, 'phone' => $user->phone, 'auth' => 'level-1', 'code_meli' => $user->code_meli],
-            'authorisation' => ['token' => $token, 'type' => 'bearer',]]);
+            'user' => [
+                'name' => $user->name,
+                'family' => $user->family,
+                'phone' => $user->phone,
+                'auth' => 'level-1',
+                'code_meli' => $user->code_meli
+            ],
+            'authorisation' => ['token' => $token, 'type' => 'bearer']
+        ]);
     }
 
     public function logout()
