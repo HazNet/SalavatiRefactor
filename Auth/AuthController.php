@@ -35,7 +35,7 @@ class AuthController extends Controller
     {
         // TODO ADD FORM REQUEST
         $request->validate([
-            'phone' => ['required', new Phone, 'string', 'digits:11'],
+            'phone'    => ['required', new Phone, 'string', 'digits:11'],
             'password' => 'required|string|min:3|max:255',
         ]);
 
@@ -43,9 +43,7 @@ class AuthController extends Controller
             return OtpController::sendCode($request);
         }
 
-        $token = Auth::attempt($request->only('phone', 'password'));
-
-        if (! $token) {
+        if (! $token = $this->attemptAuth($request->only('phone', 'password'))) {
             // TODO::block request
             return response()->json(['status' => 'error', 'message' => 'پسورد اشتباه است'], 401);
         }
@@ -53,13 +51,13 @@ class AuthController extends Controller
         $user = Auth::user();
 
         return response()->json([
-            'status' => 'login',
+            'status'  => 'login',
             'message' => 'با موفقیت وارد شدید.',
-            'user' => [
-                'name' => $user->name,
-                'family' => $user->family,
-                'phone' => $user->phone,
-                'auth' => $user->auth,
+            'user'    => [
+                'name'      => $user->name,
+                'family'    => $user->family,
+                'phone'     => $user->phone,
+                'auth'      => $user->auth,
                 'code_meli' => $user->code_meli
             ],
             'authorisation' => ['token' => $token, 'type' => 'bearer']
@@ -85,29 +83,28 @@ class AuthController extends Controller
         $checkCode = OtpController::checkCodeIsTrue($request, false);
 
         if ($checkCode['status'] !== true) {
-            return response()->json(['status' => 'success', 'message' => 'مشکلی پیش آمده',], 406);
+            return response()->json(['status' => 'error', 'message' => 'مشکلی پیش آمده'], 406);
         }
 
-        UsersOtp::where('token', $request->token)->delete();
+        $this->deleteOtp($request);
 
-        $data = [
-            'name' => $request->name,
-            'family' => $request->family,
-            'phone' => $checkCode['res']['phone'],
-            'password' => Hash::make($request->password)
-        ];
+//        if (isset($request->inviterId) and is_numeric($request->inviterId)) {
+//            $data = array_merge($data, ['inviter_id' => $request->inviterId]);
+//        }
 
-        if (isset($request->inviterId) and is_numeric($request->inviterId)) {
-            $data = array_merge($data, ['inviter_id' => $request->inviterId]);
-        }
-
-        $user = User::create($data);
+        $user = User::query()->create([
+            'name'       => $request->name,
+            'family'     => $request->family,
+            'phone'      => $checkCode['res']['phone'],
+            'password'   => Hash::make($request->password),
+            'inviter_id' => isset($request->inviterId) and is_numeric($request->inviterId) ? $request->inviterId : null,
+        ]);
         $token = Auth::login($user);
 
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'با موفقیت ثبت نام کردید',
-            'user' => [
+            'user'    => [
                 'name' => $user->name,
                 'family' => $user->family,
                 'phone' => $user->phone,
@@ -154,6 +151,7 @@ class AuthController extends Controller
      */
     public function resetPassword(Request $request)
     {
+        // TODO ADD FORM REQUEST OR VALIDATE IN FUNCTION
         $checkCodeIsTrue = OtpController::checkCodeIsTrue($request);
 
         if ($checkCodeIsTrue['status'] !== true || strlen($request->password) > 6) { // TODO CHECK OPERATION
@@ -164,11 +162,32 @@ class AuthController extends Controller
             ->where('phone', $checkCodeIsTrue['res']['phone'])
             ->update(['password' => Hash::make($request->password)]);
 
-        UsersOtp::where('token', $request->token)->delete();
+        $this->deleteOtp($request);
 
         return response()->json(['status' => 'success', 'message' => 'رمز عبور با موفقیت تغییر یافت.']);
     }
 
+    /**
+     * Attempt by request.
+     *
+     * @param  array $data
+     * @return mixed
+     */
+    private function attemptAuth(array $data)
+    {
+        return Auth::attempt($data);
+    }
+
+    /**
+     * Delete otp by token.
+     *
+     * @param  $token
+     * @return void
+     */
+    private function deleteOtp($token): void
+    {
+        UsersOtp::query()->where('token', $token)->delete();
+    }
 }
 /*
  * Dry => Don't Repeat Yourself
