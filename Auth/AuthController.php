@@ -13,22 +13,30 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    public function checkBeforeAuth($request)
+    /**
+     *
+     * @param  Request $request
+     * @return bool
+     */
+    public function checkBeforeAuth(Request $request)
     {
-        $user = User::where('phone', $request->phone)->get();
+//        User::query()->where('phone', $request->phone)->firstOrFailUser();
 
-        if (empty($user[0])) {
-            return false;
-        }
-
-        return true;
+        return (bool) User::query()->where('phone', $request->phone)->firstOrFailUser();
     }
 
+    /**
+     * Login.
+     *
+     * @param  Request $request
+     * @return mixed
+     */
     public function login(Request $request)
     {
-        $request->validate(['phone' => ['required', new Phone],]);
+        // TODO ADD FORM REQUEST
+        $request->validate(['phone' => ['required', new Phone, 'string', 'digits:11']]);
 
-        if (!self::checkBeforeAuth($request)) {
+        if (! $this->checkBeforeAuth($request)) {
             return OtpController::sendCode($request);
         }
 
@@ -36,7 +44,7 @@ class AuthController extends Controller
             return response()->json(['status' => 'warning', 'message' => 'پسورد خود را وارد کنید']);
         }
 
-        $request->validate(['password' => 'required|string',]);
+        $request->validate(['password' => 'required|string']);
         $credentials = $request->only('phone', 'password');
 
         $token = Auth::attempt($credentials);
