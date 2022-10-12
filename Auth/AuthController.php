@@ -34,30 +34,37 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         // TODO ADD FORM REQUEST
-        $request->validate(['phone' => ['required', new Phone, 'string', 'digits:11']]);
+        $request->validate([
+            'phone' => ['required', new Phone, 'string', 'digits:11'],
+            'password' => 'required|string|min:3|max:255',
+        ]);
 
         if (! $this->checkBeforeAuth($request)) {
             return OtpController::sendCode($request);
         }
 
-        if (empty($request->password)) {
-            return response()->json(['status' => 'warning', 'message' => 'پسورد خود را وارد کنید']);
-        }
+        $token = Auth::attempt($request->only('phone', 'password'));
 
-        $request->validate(['password' => 'required|string']);
-        $credentials = $request->only('phone', 'password');
-
-        $token = Auth::attempt($credentials);
-        if (!$token) {
+        if (! $token) {
             // TODO::block request
-            return response()->json(['status' => 'error', 'message' => 'پسورد اشتباه است',], 401);
+            return response()->json(['status' => 'error', 'message' => 'پسورد اشتباه است'], 401);
         }
 
         $user = Auth::user();
-        return response()->json(['status' => 'logined', 'message' => 'با موفقیت وارد شدید.', 'user' => ['name' => $user->name, 'family' => $user->family, 'phone' => $user->phone, 'auth' => $user->auth, 'code_meli' => $user->code_meli], 'authorisation' => ['token' => $token, 'type' => 'bearer',]], 200);
+
+        return response()->json([
+            'status' => 'login',
+            'message' => 'با موفقیت وارد شدید.',
+            'user' => [
+                'name' => $user->name,
+                'family' => $user->family,
+                'phone' => $user->phone,
+                'auth' => $user->auth,
+                'code_meli' => $user->code_meli
+            ],
+            'authorisation' => ['token' => $token, 'type' => 'bearer']
+        ], 200);
     }
-
-
 
     public function registerComplete(Request $request)
     {
