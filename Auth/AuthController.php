@@ -30,13 +30,14 @@ class AuthController extends Controller
      *
      * @param  Request $request
      * @return mixed
+     * @throws \Exception
      */
     public function login(Request $request)
     {
         // TODO ADD FORM REQUEST
         $request->validate([
             'phone'    => ['required', new Phone, 'string', 'digits:11'],
-            'password' => 'required|string|min:3|max:255',
+            'password' => ['required', 'string', 'min:3', 'max:255'],
         ]);
 
         if (! $this->checkBeforeAuth($request)) {
